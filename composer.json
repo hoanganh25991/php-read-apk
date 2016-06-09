@@ -1,0 +1,31 @@
+{
+    "name": "hoanganh25991/php-read-apk",
+    "type": "library",
+    "description": "Read basic info about an application from .apk file.",
+    "keywords": ["apk", "parser", "android", "read"],
+    "homepage": "https://github.com/hoanganh25991/php-read-apk",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Anh Le Hoang",
+            "email": "lehoanganh25991@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "tufanbarisyildirim/php-apk-parser": "dev-master"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/hoanganh25991/php-read-apk.git"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+            "Redoc": "lib"
+        }
+    },
+    "minimum-stability": "dev"
+}
