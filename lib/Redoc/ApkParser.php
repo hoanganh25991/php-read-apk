@@ -78,6 +78,7 @@ class ApkParser{
             if($this->parsed){
                 $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
                 $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
+                fclose($resource);
                 $this->icon = new Icon($this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON_NAME);
             }
             return;
@@ -110,6 +111,7 @@ class ApkParser{
 
         $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
         $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
+        fclose($resource);
     }
 
     /**
