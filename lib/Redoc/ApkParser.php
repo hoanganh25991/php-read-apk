@@ -60,7 +60,9 @@ class ApkParser{
 
         $this->options = $options;
         $this->parsed = false;
-        $this->extractFolder = $this->outputDir . DIRECTORY_SEPARATOR . md5($this->apkFilePath);
+
+        $md5Input  = $this->apkFilePath + filemtime($this->apkFilePath);
+        $this->extractFolder = $this->outputDir . DIRECTORY_SEPARATOR . md5($md5Input);
 
         $this->parse();
     }
