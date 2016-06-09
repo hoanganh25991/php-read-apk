@@ -72,6 +72,12 @@ class ApkParser{
 
         if(is_dir($this->extractFolder) || file_exists($this->extractFolder)){
             $this->parsed = true;
+            //if parsed, read directly from $this->extractFolder
+            if($this->parsed){
+                $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
+                $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
+                $this->icon = new Icon($this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON_NAME);
+            }
             return;
         }
 
@@ -95,7 +101,7 @@ class ApkParser{
         $this->cmd(self::ZIP, $zipCommand, ZipException::class);
 
         //copy icon to $extractFolder, under APP_ICON_NAME
-        $copiedIconPath =  $this->extractFolder.DIRECTORY_SEPARATOR.self::APP_ICON_NAME;
+        $copiedIconPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON_NAME;
         copy($this->extractFolder . DIRECTORY_SEPARATOR . $iconPath, $copiedIconPath);
         //now we have icon, AndroidManifest.xml
         $this->icon = new Icon($copiedIconPath);
@@ -130,28 +136,26 @@ class ApkParser{
     }
 
     public function getIcon(){
-        if(isset($this->icon)){
-            return $this->icon;
-        }
-        $errMsg = sprintf("parsed, apk file path: %s", $this->apkFilePath);
-        throw new Exception($errMsg);
+//        if(isset($this->icon)){
+//            return $this->icon;
+//        }
+//        $errMsg = sprintf("parsed, apk file path: %s", $this->apkFilePath);
+//        throw new Exception($errMsg);
+        return $this->icon;
+
     }
 
     public function getManifest(){
-        if(isset($this->manifest)){
-            return $this->manifest;
-        }
-        $errMsg = sprintf("parsed, apk file path: %s", $this->apkFilePath);
-        throw new Exception($errMsg);
+//        if(isset($this->manifest)){
+//            return $this->manifest;
+//        }
+//        $errMsg = sprintf("parsed, apk file path: %s", $this->apkFilePath);
+//        throw new Exception($errMsg);
+        return $this->manifest;
+
     }
 
     public function getBasicInfo(){
-        //if parsed, read directly from $this->extractFolder
-        if($this->parsed){
-            $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
-            $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
-            $this->icon = new Icon($this->extractFolder.DIRECTORY_SEPARATOR.self::APP_ICON_NAME);
-        }
         //in case parsed = false, we already have $this->manifest, $this->icon
         $info = array();
         $info[self::VERSION_NAME] = $this->manifest->getVersionName();
