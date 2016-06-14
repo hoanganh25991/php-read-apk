@@ -99,7 +99,7 @@ class ApkParser{
         $iconPath = end($m);
 
         //unzip apk, get out AndroidManifest.xml, icon base on $iconPath
-        $zipCommand = sprintf("%s x %s -aoa -o%s %s %s", self::ZIP, $this->apkFilePath, $this->extractFolder, $iconPath,
+        $zipCommand = sprintf("%s x %s -aoa -o%s %s %s -r", self::ZIP, $this->apkFilePath, $this->extractFolder, $iconPath,
             self::MANIFEST);
         $this->cmd(self::ZIP, $zipCommand, ZipException::class);
 
