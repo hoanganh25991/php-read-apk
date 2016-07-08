@@ -71,6 +71,9 @@ class ApkParser{
         if($this->parsed){
             $androidManifestPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST;
             $iconPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON;
+            if(!file_exists($androidManifestPath) || !file_exists($iconPath)){
+                return false;
+            }
         }
 
 
