@@ -7,10 +7,9 @@ use ApkParser\XmlParser;
 use Exception;
 
 class ApkParser{
-    protected $apkFilePath;
-    protected $outputDir;
-//    protected $currentApkFileTime;
-    protected $options;
+    private $apkFilePath;
+    private $outputDir;
+    private $options;
 
     const UN_HANDLE = "sorry, we still not handle this situation";
 
@@ -21,7 +20,7 @@ class ApkParser{
 
     const OUTPUT_DIR = "apk-info";
 
-    const APP_ICON_NAME = "app-icon.png";
+    const APP_ICON = "app-icon.png";
 
     const VERSION_NAME = "versionName";
     const VERSION_CODE = "versionCode";
@@ -31,11 +30,14 @@ class ApkParser{
     const TARGET_SDK = "targetSDK";
     const DATE = "date";
     const ICON_PATH = "iconPath";
+    const PLAT_FORM = "platForm";
 
-    protected $icon;
-    protected $manifest;
-    protected $parsed;
-    protected $extractFolder;
+    /** @var  Icon */
+    private $icon;
+    /** @var  Manifest */
+    private $manifest;
+    private $parsed;
+    private $extractFolder;
 
     public function __construct($apkFilePath, $outputDir = "", $options = array()){
         //check apk file exist
@@ -48,20 +50,17 @@ class ApkParser{
         //check output is directory
         $this->outputDir = self::OUTPUT_DIR;
         if(!empty($outputDir)){
-            $this->outputDir = self::OUTPUT_DIR;
+            $this->outputDir = $this->removeSpace($outputDir);
         }
 
         if(!is_dir($this->outputDir) && !file_exists($this->outputDir)){
             mkdir($this->outputDir, 0777, true);
         }
 
-        //save current apk file time, condition for ONLY PARSE UPDATED file
-//        $this->currentApkFileTime = filemtime($apkFilePath);
-
         $this->options = $options;
         $this->parsed = false;
 
-        $md5Input  = $this->apkFilePath + filemtime($this->apkFilePath);
+        $md5Input = $this->apkFilePath + filemtime($this->apkFilePath);
         $this->extractFolder = $this->outputDir . DIRECTORY_SEPARATOR . md5($md5Input);
 
         $this->parse();
@@ -69,92 +68,94 @@ class ApkParser{
 
 
     private function parse(){
-        //mkdir before extract
-//        $extractFolder = $this->outputDir . DIRECTORY_SEPARATOR . md5($this->apkFilePath);
+        $this->checkParse();
 
-        if(is_dir($this->extractFolder) || file_exists($this->extractFolder)){
-            $this->parsed = true;
-            //if parsed, read directly from $this->extractFolder
-            if($this->parsed){
-                $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
-                $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
-                fclose($resource);
-                $this->icon = new Icon($this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON_NAME);
+        if($this->parsed){
+            $androidManifestPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST;
+            $iconPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON;
+        }
+
+
+        if(!$this->parsed){
+            if(!is_dir($this->extractFolder) && !file_exists($this->extractFolder)){
+                mkdir($this->extractFolder, 0777, true);
             }
-            return;
+
+            //using aapt to get WHERE icon locate in apk file
+            $aaptCommand = "aapt d badging {$this->apkFilePath}";
+            $badging = $this->cmd($aaptCommand);
+
+            if(!$badging){
+                return false;
+            }
+
+            //read out icon-path from $badging
+            $badgingString = implode("\n", $badging);
+            $pattern_icon = "/icon='(.+)'/isU";
+            preg_match($pattern_icon, $badgingString, $m);
+            $iconPath = end($m);
+
+            //unzip apk, get out AndroidManifest.xml, icon base on $iconPath
+            $zipCommand = "7z x {$this->apkFilePath} -aoa -o{$this->extractFolder} {$iconPath} AndroidManifest.xml";
+            $result = $this->cmd( $zipCommand);
+            if(!$result){
+                return false;
+            }
+            //if above command success
+            $androidManifestPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST;
+
+            //copy icon to $extractFolder, under APP_ICON_NAME
+            $copiedIconPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON;
+            $copyStatus = copy($this->extractFolder . DIRECTORY_SEPARATOR . $iconPath, $copiedIconPath);
+            if($copyStatus === 1){
+                $iconPath = $copiedIconPath;
+            }else{
+//                trigger_error("copy app-icon failed");
+                return false;
+            }
+
         }
-
-        if(!is_dir($this->extractFolder) && !file_exists($this->extractFolder)){
-            mkdir($this->extractFolder, 0777, true);
-        }
-
-        //using aapt to get WHERE icon locate in apk file
-        $aaptCommand = sprintf("%s d badging %s", self::AAPT, $this->apkFilePath);
-        $badging = $this->cmd(self::AAPT, $aaptCommand, AaptException::class);
-
-        //read out icon-path from $badging
-        $badgingString = implode("\n", $badging);
-        $pattern_icon = "/icon='(.+)'/isU";
-        preg_match($pattern_icon, $badgingString, $m);
-        $iconPath = end($m);
-
-        //unzip apk, get out AndroidManifest.xml, icon base on $iconPath
-        $zipCommand = sprintf("%s x %s -aoa -o%s %s %s -r", self::ZIP, $this->apkFilePath, $this->extractFolder, $iconPath,
-            self::MANIFEST);
-        $this->cmd(self::ZIP, $zipCommand, ZipException::class);
-
-        //copy icon to $extractFolder, under APP_ICON_NAME
-        $copiedIconPath = $this->extractFolder . DIRECTORY_SEPARATOR . self::APP_ICON_NAME;
-        copy($this->extractFolder . DIRECTORY_SEPARATOR . $iconPath, $copiedIconPath);
         //now we have icon, AndroidManifest.xml
-        $this->icon = new Icon($copiedIconPath);
+        if(isset($iconPath) && isset($androidManifestPath)){
+            $this->icon = new Icon($iconPath);
 
-        $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
-        $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
-        fclose($resource);
+            $resource = fopen($this->extractFolder . DIRECTORY_SEPARATOR . self::MANIFEST, "r");
+            $this->manifest = new Manifest(new XmlParser(new Stream($resource)));
+            fclose($resource);
+            return true;
+        }
+//        if(!isset($iconPath)){
+//            $msg = sprintf("%s path not exist", self::APP_ICON);
+//            throw new Exception($msg);
+//        }
+//        if(!isset($androidManifestPath)){
+//            $msg = sprintf("%s not exist", self::MANIFEST);
+//            throw new Exception($msg);
+//        }
+        return false;
     }
 
     /**
-     * @param string $cmd
      * @param string $command
-     * @param Exception $exceptionType
-     * @return string
      * @throws Exception
+     * @return string $out
      */
-    private function cmd($cmd, $command, $exceptionType){
-        exec($cmd, $out, $resultCode);
-        if($resultCode == 1){
-            //$cmd not installed or not added to environment variable
-            $errMsg = sprintf("%s not installed or not added to environment variable", $cmd);
-            throw new Exception($errMsg);
+    private function cmd($command){
+        exec($command, $out, $resultCode);
+        if($resultCode != 0){
+//            $msg = sprintf("Error when execute cmd: %s", $command);
+//            throw new Exception($msg);
+            return false;
         }
-        if($resultCode == 0 || $resultCode == 2){
-            exec($command, $out, $resultCode);
-            if($resultCode == 0){
-                return $out;
-            }else{
-                throw new $exceptionType($resultCode);
-            }
-        }
-        throw new Exception(self::UN_HANDLE);
+        return $out;
     }
 
     public function getIcon(){
-//        if(isset($this->icon)){
-//            return $this->icon;
-//        }
-//        $errMsg = sprintf("parsed, apk file path: %s", $this->apkFilePath);
-//        throw new Exception($errMsg);
         return $this->icon;
 
     }
 
     public function getManifest(){
-//        if(isset($this->manifest)){
-//            return $this->manifest;
-//        }
-//        $errMsg = sprintf("parsed, apk file path: %s", $this->apkFilePath);
-//        throw new Exception($errMsg);
         return $this->manifest;
 
     }
@@ -170,7 +171,24 @@ class ApkParser{
         $dateString = date("dMY H:iA", filemtime($this->apkFilePath));
         $info[self::DATE] = $dateString;
         $info[self::ICON_PATH] = $this->icon->getPath();
+        $info[self::PLAT_FORM] = $this->manifest->getMinSdk()->platform;
 
         return $info;
+    }
+
+    private function removeSpace($name){
+        return preg_replace('/\s+/', '-', $name);
+    }
+
+    /**
+     * Basically, file name depend on created-date
+     * if created-date changed > file name changed
+     * folder already exist > parsed
+     * folder not exist > !parsed
+     */
+    protected function checkParse(){
+        if(is_dir($this->extractFolder) || file_exists($this->extractFolder)){
+            $this->parsed = true;
+        }
     }
 }
