@@ -62,12 +62,10 @@ class ApkParser{
 
         $md5Input = $this->apkFilePath + filemtime($this->apkFilePath);
         $this->extractFolder = $this->outputDir . DIRECTORY_SEPARATOR . md5($md5Input);
-
-        $this->parse();
     }
 
 
-    private function parse(){
+    public function parse(){
         $this->checkParse();
 
         if($this->parsed){
@@ -110,7 +108,6 @@ class ApkParser{
             if($copyStatus === 1){
                 $iconPath = $copiedIconPath;
             }else{
-//                trigger_error("copy app-icon failed");
                 return false;
             }
 
@@ -124,14 +121,6 @@ class ApkParser{
             fclose($resource);
             return true;
         }
-//        if(!isset($iconPath)){
-//            $msg = sprintf("%s path not exist", self::APP_ICON);
-//            throw new Exception($msg);
-//        }
-//        if(!isset($androidManifestPath)){
-//            $msg = sprintf("%s not exist", self::MANIFEST);
-//            throw new Exception($msg);
-//        }
         return false;
     }
 
@@ -143,8 +132,6 @@ class ApkParser{
     private function cmd($command){
         exec($command, $out, $resultCode);
         if($resultCode != 0){
-//            $msg = sprintf("Error when execute cmd: %s", $command);
-//            throw new Exception($msg);
             return false;
         }
         return $out;
